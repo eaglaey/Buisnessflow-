@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101114">
+<meta name="description" content="BUSINESSFLOW — gérez votre activité simplement.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>BUSINESSFLOW</title>
+<style>
+:root{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#17181c;background:#f4f5f7}
+*{box-sizing:border-box}body{margin:0}header{background:#101114;color:white;padding:22px max(20px,calc((100% - 1100px)/2));display:flex;justify-content:space-between;align-items:center;gap:16px}
+.brand{font-size:22px;font-weight:850;letter-spacing:1.5px}.tag{font-size:12px;color:#b8bbc4;margin-top:4px}
+main{max-width:1100px;margin:26px auto;padding:0 18px}.intro{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}
+h1{font-size:27px;margin:0 0 6px}.muted{color:#737782;font-size:14px}
+button,.button{border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:pointer;background:#17181c;color:#fff}
+button.secondary{background:#e7e8ec;color:#25262b}.tabs{display:flex;gap:8px;overflow:auto;margin:22px 0}.tabs button{white-space:nowrap;background:#e7e8ec;color:#333}.tabs button.active{background:#17181c;color:white}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}.card,.panel{background:white;border:1px solid #e6e7eb;border-radius:15px;padding:17px}.card small{color:#777}.number{font-size:27px;font-weight:800;margin-top:7px}
+.panel h2{font-size:18px;margin:0 0 14px}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+input,select{width:100%;padding:12px;border:1px solid #d8dae0;border-radius:9px;font:inherit;background:white}
+.formrow{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:10px}.formrow .full{grid-column:1/-1}
+form{margin:12px 0}.item{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid #eee;padding:13px 0}.item strong{display:block}.item small{color:#777}.item button{padding:8px 10px}.empty{padding:22px;color:#777;text-align:center}
+.hidden{display:none!important}.hint{font-size:12px;color:#777;line-height:1.5;margin-top:16px}
+@media(max-width:650px){.cards{grid-template-columns:1fr}.formrow{grid-template-columns:1fr}.formrow .full{grid-column:auto}header{padding:18px}.brand{font-size:19px}}
+</style>
+</head>
+<body>
+<header><div><div class="brand">BUSINESSFLOW</div><div class="tag">L’organisation de votre activité, simplement.</div></div><button id="installBtn" class="hidden">Installer l’application</button></header>
+<main>
+<section class="intro"><div><h1>Tableau de bord</h1><div class="muted">Votre espace de démonstration</div></div><div class="muted" id="today"></div></section>
+<div class="cards">
+ <div class="card"><small>Clients enregistrés</small><div class="number" id="clientCount">0</div></div>
+ <div class="card"><small>Rendez-vous</small><div class="number" id="appointmentCount">0</div></div>
+ <div class="card"><small>Factures marquées payées</small><div class="number" id="paidCount">0</div></div>
+</div>
+<nav class="tabs" aria-label="Sections">
+ <button class="active" data-tab="clients">Clients</button><button data-tab="appointments">Rendez-vous</button><button data-tab="invoices">Factures</button>
+</nav>
+<section id="clients" class="panel">
+ <div class="toolbar"><h2>Mes clients</h2><button data-add="client">+ Ajouter un client</button></div>
+ <form id="clientForm" class="hidden"><div class="formrow"><input name="name" placeholder="Nom du client" required><input name="email" type="email" placeholder="E-mail (facultatif)"></div><button>Enregistrer</button> <button type="button" class="secondary cancel">Annuler</button></form>
+ <div id="clientList"></div>
+</section>
+<section id="appointments" class="panel hidden">
+ <div class="toolbar"><h2>Mes rendez-vous</h2><button data-add="appointment">+ Ajouter un rendez-vous</button></div>
+ <form id="appointmentForm" class="hidden"><div class="formrow"><input name="title" placeholder="Objet du rendez-vous" required><input name="when" type="datetime-local" required></div><button>Enregistrer</button> <button type="button" class="secondary cancel">Annuler</button></form>
+ <div id="appointmentList"></div>
+</section>
+<section id="invoices" class="panel hidden">
+ <div class="toolbar"><h2>Mes factures</h2><button data-add="invoice">+ Ajouter une facture</button></div>
+ <form id="invoiceForm" class="hidden"><div class="formrow"><input name="title" placeholder="Nom / référence" required><input name="amount" type="number" min="0" step=".01" placeholder="Montant en €" required></div><button>Enregistrer</button> <button type="button" class="secondary cancel">Annuler</button></form>
+ <div id="invoiceList"></div>
+</section>
+<p class="hint">Prototype de démonstration : les données restent dans le stockage de ce navigateur sur cet appareil. N’y ajoutez pas de vraies données clients ou informations confidentielles. Cette version ne possède ni comptes utilisateurs, ni synchronisation, ni paiement, ni conformité juridique complète.</p>
+</main>
+<script>
+const storeKey='businessflow-demo-v1';
+let data=JSON.parse(localStorage.getItem(storeKey)||'{"clients":[],"appointments":[],"invoices":[]}');
+const $=s=>document.querySelector(s);
+const save=()=>{localStorage.setItem(storeKey,JSON.stringify(data));render()};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+$('#today').textContent=new Intl.DateTimeFormat('fr-FR',{dateStyle:'full'}).format(new Date());
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active',x===b));['clients','appointments','invoices'].forEach(id=>$('#'+id).classList.toggle('hidden',id!==b.dataset.tab))}));
+document.querySelectorAll('[data-add]').forEach(b=>b.addEventListener('click',()=>$('#'+b.dataset.add+'Form').classList.remove('hidden')));
+document.querySelectorAll('.cancel').forEach(b=>b.addEventListener('click',()=>b.closest('form').classList.add('hidden')));
+function bindForm(id,key,make){$('#'+id).addEventListener('submit',e=>{e.preventDefault();const fd=new FormData(e.target);data[key].push(make(fd));e.target.reset();e.target.classList.add('hidden');save()})}
+bindForm('clientForm','clients',f=>({id:crypto.randomUUID(),name:f.get('name'),email:f.get('email')}));
+bindForm('appointmentForm','appointments',f=>({id:crypto.randomUUID(),title:f.get('title'),when:f.get('when')}));
+bindForm('invoiceForm','invoices',f=>({id:crypto.randomUUID(),title:f.get('title'),amount:Number(f.get('amount')),paid:false}));
+function row(title,sub,actions){return `<div class="item"><div><strong>${esc(title)}</strong><small>${esc(sub||'')}</small></div><div>${actions}</div></div>`}
+function render(){
+ $('#clientCount').textContent=data.clients.length;$('#appointmentCount').textContent=data.appointments.length;$('#paidCount').textContent=data.invoices.filter(x=>x.paid).length;
+ $('#clientList').innerHTML=data.clients.map(x=>row(x.name,x.email,`<button class="secondary" onclick="removeItem('clients','${x.id}')">Supprimer</button>`)).join('')||'<div class="empty">Aucun client pour le moment.</div>';
+ $('#appointmentList').innerHTML=data.appointments.map(x=>row(x.title,new Date(x.when).toLocaleString('fr-FR'),`<button class="secondary" onclick="removeItem('appointments','${x.id}')">Supprimer</button>`)).join('')||'<div class="empty">Aucun rendez-vous pour le moment.</div>';
+ $('#invoiceList').innerHTML=data.invoices.map(x=>row(x.title,`${x.amount.toFixed(2)} € · ${x.paid?'Payée':'En attente'}`,`<button onclick="togglePaid('${x.id}')">${x.paid?'Annuler paiement':'Marquer payée'}</button> <button class="secondary" onclick="removeItem('invoices','${x.id}')">×</button>`)).join('')||'<div class="empty">Aucune facture pour le moment.</div>';
+}
+window.removeItem=(key,id)=>{data[key]=data[key].filter(x=>x.id!==id);save()};
+window.togglePaid=id=>{const x=data.invoices.find(x=>x.id===id);if(x)x.paid=!x.paid;save()};
+let deferredPrompt;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('#installBtn').classList.remove('hidden')});
+$('#installBtn').addEventListener('click',async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;$('#installBtn').classList.add('hidden')}});
+if('serviceWorker'in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
+render();
+</script>
+</body></html>
